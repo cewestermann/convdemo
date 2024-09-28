@@ -21,6 +21,6 @@ set debug=        -FC                             &:: Produce the full path of t
 set debug=%debug% -Z7                             &:: Produce debug information
 set debug=%debug% -fsanitize=address
 
-cl %compiler% %debug% ..\src\convdemo.c user32.lib
+cl %compiler% %debug% ..\src\convdemo.c user32.lib gdi32.lib
 popd
 

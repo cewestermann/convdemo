@@ -1,6 +1,36 @@
 #include <windows.h>
+#include <stdbool.h>
 
-LRESULT main_window_callback(HWND window,
+#define internal static
+#define local_persist static
+#define global_variable static
+
+global_variable bool running;
+
+internal void win32_resize_DIB_section(int width, int height) 
+{
+  BITMAPINFO bitmap_info;
+  void *bitmap_memory;
+  HBITMAP bitmap_handle = CreateDIBSection(device_context,
+                                           &bitmap_info,
+                                           DIB_RGB_COLORS,
+                                           &bitmap_memory,
+                                           0, 0);
+
+}
+
+internal void win32_update_window(HDC device_context, int x, int y, int width, int height) 
+{
+  StretchDIBits(device_context,
+                x, y, width, height,
+                x, y, width, height,
+                const VOID *lpBits,
+                const BITMAPINFO *lpbmi,
+                DIB_RGB_COLORS, SRCCOPY);
+
+}
+
+LRESULT win32_main_window_callback(HWND window,
                              UINT msg,
                              WPARAM wparam,
                              LPARAM lparam) 
@@ -10,17 +40,23 @@ LRESULT main_window_callback(HWND window,
   switch (msg) {
     case WM_SIZE:
       {
-        OutputDebugStringA("WM_SIZE\n");
+        RECT client_rect;
+        GetClientRect(window, &client_rect);
+
+        int width = client_rect.right - client_rect.left;
+        int height = client_rect.bottom - client_rect.top;
+
+        win32_resize_DIB_section(width, height);
       } break;
 
     case WM_DESTROY:
       {
-        OutputDebugStringA("WM_DESTROY\n");
+        running = false;
       } break;
 
     case WM_CLOSE:
-      {
-        OutputDebugStringA("WM_CLOSE\n");
+      { 
+        running = false;
       } break;
 
     case WM_ACTIVATEAPP:
@@ -28,6 +64,20 @@ LRESULT main_window_callback(HWND window,
         OutputDebugStringA("WM_ACTIVATEAPP\n");
       } break;
 
+    case WM_PAINT:
+      {
+        PAINTSTRUCT paint;
+        HDC device_context = BeginPaint(window, &paint);
+        // Perform painting here
+        int x = paint.rcPaint.left;
+        int y = paint.rcPaint.top;
+        int width = paint.rcPaint.right - paint.rcPaint.left;
+        int height = paint.rcPaint.bottom - paint.rcPaint.top;
+        win32_update_window(device_context, x, y, width, height);
+
+        EndPaint(window, &paint);
+      } break;
+      
     default:
       {
         result = DefWindowProc(window, msg, wparam, lparam);
@@ -38,16 +88,13 @@ LRESULT main_window_callback(HWND window,
   return result;
 } 
 
-
-
-
 int CALLBACK WinMain(HINSTANCE instance,
                      HINSTANCE prev_instance,
                      LPSTR cmd_line,
                      int show_code) {
   WNDCLASSA window_class = {0}; 
   window_class.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
-  window_class.lpfnWndProc = main_window_callback;
+  window_class.lpfnWndProc = win32_main_window_callback;
   window_class.hInstance = instance;
   window_class.lpszClassName = "ConvDemoWindowClass";
 
@@ -60,7 +107,8 @@ int CALLBACK WinMain(HINSTANCE instance,
                                   0, 0, instance, 0);
     if (window) {
       // Success
-      for (;;) {
+      running = true;
+      while (running) {
         MSG message;
         BOOL message_result = GetMessage(&message, 0, 0, 0);
         if (message_result > 0) {
