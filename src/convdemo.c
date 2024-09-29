@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <stdio.h>
 #include <stdbool.h>
 
 #define internal static
@@ -8,11 +9,9 @@
 global_variable bool running;
 global_variable BITMAPINFO bitmap_info;
 global_variable void* bitmap_memory;
-global_variable HBITMAP bitmap_handle;
 // A device context is a Windows term when working with the GDI, the Windows Graphics Device Interface
 // It's a place where you draw, so if you have several different device contexts, you're drawing multiple places,
 // such as multiple windows. 
-global_variable HDC bitmap_device_context;
 
 internal void win32_resize_DIB_section(int width, int height) 
 {
@@ -23,20 +22,15 @@ internal void win32_resize_DIB_section(int width, int height)
   bitmap_info.bmiHeader.biBitCount = 32;
   bitmap_info.bmiHeader.biCompression = BI_RGB;
 
-  if (bitmap_handle) 
-  {
-    DeleteObject(bitmap_handle);
+  if (bitmap_memory) {
+    if (VirtualFree(bitmap_memory, 0, MEM_RELEASE) != 0) {
+      fprintf(stderr, "Error in freeing memory\n");
+    };
   } 
 
-  if (!bitmap_device_context) {
-    bitmap_device_context = CreateCompatibleDC(0);
-  } 
-
-  bitmap_handle = CreateDIBSection(bitmap_device_context,
-                                           &bitmap_info,
-                                           DIB_RGB_COLORS,
-                                           &bitmap_memory,
-                                           0, 0);
+  int bytes_per_pixel = 4;
+  int bitmap_memory_size = bytes_per_pixel * width * height;
+  bitmap_memory = VirtualAlloc(0, bitmap_memory_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
 }
 
